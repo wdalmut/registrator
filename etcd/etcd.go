@@ -1,13 +1,12 @@
 package etcd
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 
 	etcd2 "github.com/coreos/go-etcd/etcd"
 	"github.com/gliderlabs/registrator/bridge"
@@ -86,14 +85,18 @@ func (r *EtcdAdapter) Register(service *bridge.Service) error {
 	r.syncEtcdCluster()
 
 	path := r.path + "/" + service.Name + "/" + service.ID
-	port := strconv.Itoa(service.Port)
-	addr := net.JoinHostPort(service.IP, port)
+	payload, err := json.Marshal(service)
 
-	var err error
+	if err != nil {
+		log.Println("Fail to serialize the service:", err)
+	}
+
+	data := string(payload)
+
 	if r.client != nil {
-		_, err = r.client.Set(path, addr, uint64(service.TTL))
+		_, err = r.client.Set(path, data, uint64(service.TTL))
 	} else {
-		_, err = r.client2.Set(path, addr, uint64(service.TTL))
+		_, err = r.client2.Set(path, data, uint64(service.TTL))
 	}
 
 	if err != nil {
